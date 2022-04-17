@@ -1,32 +1,33 @@
 import tweepy
 import pickle
 import json
- 
+
 class Tweeter:
+    """Keeps track of most recent tweets from each search term in dictionary.
+       Uses authentication tokens and api keys to create object that can access
+       Twitter using the tweepy library. Methods included for saving object via 
+       pickle, pulling tweets from timeline, and searching."""
     def __init__(self, api_key, api_key_secret, bearer_token, token, token_secret, last_seen_dict = None):
         if last_seen_dict == None:
             self.dict = {}
-            self.dict["timeline"] = 0
-            self.dict["#Northeastern"] = 0
-            self.dict["HowlinHuskies"] = 0
-            self.dict["LikeAHusky"] = 0
-           
+            
         else:
             self.dict =  last_seen_dict
- 
         auth = tweepy.OAuth1UserHandler(api_key, api_key_secret)
         auth.set_access_token(token, token_secret)
         #self.client = tweepy.Client(bearer_token, wait_on_rate_limit=True)
         #auth = tweepy.OAuth2BearerHandler(bearer_token)
         api = tweepy.API(auth, wait_on_rate_limit=True)
         self.api = api
- 
+
     def get_timeline(self):
         """Gets 200 tweets from account timeline, saves most recent to dict, returns list of unseen tweets
         tweet ids are time ordered, uses this to see if tweet was in previous batch"""
-        timeline_tweets = tweepy.Cursor(self.api.home_timeline, count=2).items(100) #gets as many tweets from timeline as possible (100)
+        timeline_tweets = tweepy.Cursor(self.api.home_timeline, count=10).items(100) #gets as many tweets from timeline as possible (100)
         unseen = []
-        max = 0
+        if not "timeline" in self.dict:
+            self.dict["timeline"] = 0
+        max = self.dict["timeline"]
         for tweet in timeline_tweets:
             if tweet.id > self.dict["timeline"]:
                 unseen.append(tweet)
@@ -34,59 +35,61 @@ class Tweeter:
                     max = tweet.id
         self.dict["timeline"] = max
         return unseen
-   
-    def get_Northeastern(self):
-        list_Northeastern = []
-        max = 0
-        for tweet in self.api.search(q="#Northeastern", lang="en", rpp=100):
-            if tweet.id > self.dict["#Northeastern"]:
-                list_Northeastern.append(tweet)
-                if tweet.id > max:
-                    max = tweet.id
-        if max > self.dict["#Northeastern"]: self.dict["#Northeastern"] = max
-        return list_Northeastern
-   
-    def get_HowlinHuskies(self):
-        list_HowlinHuskies = []
-        max = 0
-        for tweet in self.api.search(q="HowlinHuskies", lang="en", rpp=100):
-            if tweet.id > self.dict["HowlinHuskies"]:
-                list_HowlinHuskies.append(tweet)
-                if tweet.id > max:
-                    max = tweet.id
-        if max > self.dict["#HowlinHuskies"]: self.dict["#HowlinHuskies"] = max
-        return list_HowlinHuskies
-   
-    def get_LikeAHusky(self):
-        list_LikeAHusky = []
-        max = 0
-        for tweet in self.api.search(q="LikeAHusky", lang="en", rpp=100):
-            if tweet.id > self.dict["LikeAHusky"]:
-                list_LikeAHusky.append(tweet)
-                if tweet.id > max:
-                    max = tweet.id
-        if max > self.dict["LikeAHusky"]: self.dict["#LikeAHusky"] = max
-        return list_LikeAHusky
-   
+
+    def get_from_search(self, search):
+        """Generalized version of below searches. Takes a phrase to search, and pulls tweet from that search
+        that have been tweeted since the last search. Saves most recently processed tweet to dictionary"""
+        list_search = []
+        if not search in self.dict:
+            self.dict[search] = 0
+        for tweet in self.api.search_tweets(q=search, lang="en", count=10, since_id=self.dict[search]):
+            list_search.append(tweet)
+            if self.dict[search] < tweet.id: #may not work? depends if search only pulls once
+                self.dict[search] = tweet.id
+        return list_search
+    
     def process_tweet_list(self, tweet_list):
+        """Retweets all un-retweeted tweets from given list. Designed to process results from get_timeline
+        and get_from_search"""
         for tweet in tweet_list:
-            print(f"{tweet.id} {tweet.text}")
             if ((tweet.in_reply_to_status_id is None) and not (tweet.user.id == "fan_neu") and not tweet.retweeted):
                 print("retweeting")
-                self.api.retweet(tweet.id)
-   
-    def save_to_file(self, filename):
+                try:
+                    tweet.retweet()
+                except tweepy.errors.Forbidden:
+                    print("Already Retweeted!")
+                #self.api.retweet(tweet.id)
+    
+    def save_dictionary_to_file(self, filename):
+        """Loads dictionary to pickle. Using this to keep most recent tweets from each search inbetween runs of the program
+        since it will be running on a server and methods depend on most recent tweets processed"""
         with open(filename, 'wb') as f:
-            pickle.dump(self, f)
+            pickle.dump(self.dict, f)
+
+    def load_dictionary_from_file(self, filename):
+        """Loads dictionary from pickle Using this to keep most recent tweets from each search inbetween runs of the program
+        since it will be running on a server and methods depend on most recent tweets processed"""
+        try:
+            with open(filename, 'rb') as f:
+                self.dict = pickle.load(f)
+        except:
+            self.dict = {}
 
 
 def load_secrets(filename):
+    """Loads secrets from the given file (in json format so we can edit them).
+    This is a separate file so we don't leak our secret tokens on github."""
     f = open(filename, "r")
     return json.load(f)
 
 secrets = load_secrets("secrets.json")
 
 bot = Tweeter(*secrets)
-tl = bot.get_timeline()
-# print(tl)
-bot.process_tweet_list(tl)
+state_file = "bot_state.pkl"
+search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
+
+bot.load_dictionary_from_file(state_file)
+bot.process_tweet_list(bot.get_timeline())
+for search in search_list:
+    bot.process_tweet_list(bot.get_from_search(search))
+bot.save_to_file(state_file)
