@@ -1,6 +1,8 @@
-import tweepy
-import pickle
 import json
+import pickle
+import time
+import tweepy
+
 
 class Tweeter:
     """Keeps track of most recent tweets from each search term in dictionary.
@@ -82,14 +84,22 @@ def load_secrets(filename):
     f = open(filename, "r")
     return json.load(f)
 
-secrets = load_secrets("secrets.json")
-
-bot = Tweeter(*secrets)
+secrets_file = "secrets.json"
 state_file = "bot_state.pkl"
 search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
+delay_secs = 10 * 60    # 10 minutes
 
-bot.load_dictionary_from_file(state_file)
-bot.process_tweet_list(bot.get_timeline())
-for search in search_list:
-    bot.process_tweet_list(bot.get_from_search(search))
-bot.save_to_file(state_file)
+secrets = load_secrets(secrets_file)
+
+bot = Tweeter(*secrets)
+
+
+while True:
+    bot.load_dictionary_from_file(state_file)
+    bot.process_tweet_list(bot.get_timeline())
+    for search in search_list:
+        bot.process_tweet_list( bot.get_from_search(search) )
+    bot.save_dictionary_to_file(state_file)
+
+    print(f"Sleeping for {delay_secs}.  ZZZ zzz ...")
+    time.sleep(delay_secs)
