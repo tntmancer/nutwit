@@ -1,2 +1,3 @@
 secrets.json
 bot_state.pkl
+__pycache__/*

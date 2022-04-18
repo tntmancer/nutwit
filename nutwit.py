@@ -3,7 +3,6 @@ import pickle
 import time
 import tweepy
 
-
 class Tweeter:
     """Keeps track of most recent tweets from each search term in dictionary.
        Uses authentication tokens and api keys to create object that can access
@@ -25,6 +24,7 @@ class Tweeter:
     def get_timeline(self):
         """Gets 200 tweets from account timeline, saves most recent to dict, returns list of unseen tweets
         tweet ids are time ordered, uses this to see if tweet was in previous batch"""
+        #Interacts w/ API, not testing using module
         timeline_tweets = tweepy.Cursor(self.api.home_timeline, count=10).items(100) #gets as many tweets from timeline as possible (100)
         unseen = []
         if not "timeline" in self.dict:
@@ -41,6 +41,7 @@ class Tweeter:
     def get_from_search(self, search):
         """Generalized version of below searches. Takes a phrase to search, and pulls tweet from that search
         that have been tweeted since the last search. Saves most recently processed tweet to dictionary"""
+        #Interacts w/ API, not testing using module
         list_search = []
         if not search in self.dict:
             self.dict[search] = 0
@@ -53,6 +54,7 @@ class Tweeter:
     def process_tweet_list(self, tweet_list):
         """Retweets all un-retweeted tweets from given list. Designed to process results from get_timeline
         and get_from_search"""
+        #Interacts w/ API, not testing using module
         for tweet in tweet_list:
             if ((tweet.in_reply_to_status_id is None) and not (tweet.user.id == "fan_neu") and not tweet.retweeted):
                 print("retweeting")
@@ -61,16 +63,34 @@ class Tweeter:
                 except tweepy.errors.Forbidden:
                     print("Already Retweeted!")
                 #self.api.retweet(tweet.id)
-    
+
+    def filter_tweet_list(self, tweet_list, filter):
+        """Filters out tweets that include certain phrases, such as "Giving Day" or "Admissions" or "$"
+           that may not be of interest to current students (who don't have much money)"""
+        filtered = []
+        for tweet in tweet_list:
+            good = True
+            for word in filter:
+                if tweet.text.find(word) != -1:
+                    good = False
+                    break
+            if good:
+                filtered.append(tweet)
+        return filtered
+
     def save_dictionary_to_file(self, filename):
         """Loads dictionary to pickle. Using this to keep most recent tweets from each search inbetween runs of the program
-        since it will be running on a server and methods depend on most recent tweets processed"""
+           since it will be running on a server and methods depend on most recent tweets processed. Only doing dictionary so
+           that the dictionary can be directly imported from a file to an existing object, since only the dictionary will
+           change with each run."""
         with open(filename, 'wb') as f:
             pickle.dump(self.dict, f)
 
     def load_dictionary_from_file(self, filename):
         """Loads dictionary from pickle Using this to keep most recent tweets from each search inbetween runs of the program
-        since it will be running on a server and methods depend on most recent tweets processed"""
+           since it will be running on a server and methods depend on most recent tweets processed. Only doing dictionary so
+           that the dictionary can be directly imported from a file to an existing object, since only the dictionary will
+           change with each run."""
         try:
             with open(filename, 'rb') as f:
                 self.dict = pickle.load(f)
@@ -82,24 +102,31 @@ def load_secrets(filename):
     """Loads secrets from the given file (in json format so we can edit them).
     This is a separate file so we don't leak our secret tokens on github."""
     f = open(filename, "r")
-    return json.load(f)
+    secrets = json.load(f)
+    f.close()
+    return secrets
 
-secrets_file = "secrets.json"
-state_file = "bot_state.pkl"
-search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
-delay_secs = 10 * 60    # 10 minutes
+def main():
+    secrets_file = "secrets.json"
+    state_file = "bot_state.pkl"
+    search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
+    filter = ["Giving Day", "$", "Admissions", "Illinois"]
+    delay_secs = 10 * 60    # 10 minutes
 
-secrets = load_secrets(secrets_file)
+    secrets = load_secrets(secrets_file)
 
-bot = Tweeter(*secrets)
+    bot = Tweeter(*secrets)
 
 
-while True:
-    bot.load_dictionary_from_file(state_file)
-    bot.process_tweet_list(bot.get_timeline())
-    for search in search_list:
-        bot.process_tweet_list( bot.get_from_search(search) )
-    bot.save_dictionary_to_file(state_file)
+    while True:
+        bot.load_dictionary_from_file(state_file)
+        bot.process_tweet_list(bot.filter_tweet_list(bot.get_timeline(), filter))
+        for search in search_list:
+            bot.process_tweet_list(bot.filter_tweet_list(bot.get_from_search(search), filter))
+        bot.save_dictionary_to_file(state_file)
 
-    print(f"Sleeping for {delay_secs}.  ZZZ zzz ...")
-    time.sleep(delay_secs)
+        print(f"Sleeping for {delay_secs}.  ZZZ zzz ...")
+        time.sleep(delay_secs)
+
+if __name__ == "__main__":
+    main()
