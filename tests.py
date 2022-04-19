@@ -4,6 +4,8 @@ import unittest
 from nutwit import Tweeter, load_secrets
 import pickle
 
+# To run tests from the command line: python -m unittest tests.py
+
 class TweetMock:
     def __init__(self, text):
         self.text = text

@@ -43,14 +43,22 @@ class Tweeter:
         tweet ids are time ordered, uses this to see if tweet was in previous batch"""
         #Interacts w/ API, not testing using module
         
-        tweets = self.api.home_timeline(count=10, since_id=self.dict.get("timeline"))
         return self.__handle_new_tweets("timeline", tweets)
 
-    def get_from_search(self, search):
+    def search_tweets(self, search):
         """Generalized version of below searches. Takes a phrase to search, and pulls tweet from that search
-        that have been tweeted since the last search. Saves most recently processed tweet to dictionary"""
+        that have been tweeted since the last search. Saves most recently processed tweet to dictionary
+
+        If the search phrase is 'timeline' it instead searches the user's timeline."""
         #Interacts w/ API, not testing using module
-        tweets = self.api.search_tweets(q=search, lang="en", count=10, since_id=self.dict.get(search))
+        since = self.dict.get("timeline")
+        count = 10
+
+        if search == "timeline":
+            tweets = self.api.home_timeline(count=count, since_id=since)
+        else:
+            tweets = self.api.search_tweets(q=search, lang="en", count=count, since_id=since)
+
         return self.__handle_new_tweets(search, tweets)
     
     def process_tweet_list(self, tweet_list):
@@ -112,7 +120,7 @@ def load_secrets(filename):
 def main():
     secrets_file = "secrets.json"
     state_file = "bot_state.pkl"
-    search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
+    search_list = ["timeline", "#Northeastern", "HowlinHuskies", "LikeAHusky"]
     filter = ["Giving Day", "$", "Admissions", "Illinois"]
     delay_secs = 1 * 60    # 1 minute
 
@@ -122,13 +130,13 @@ def main():
 
 
     while True:
+        print("Running searches:")
         bot.load_dictionary_from_file(state_file)
-        bot.process_tweet_list(bot.filter_tweet_list(bot.get_timeline(), filter))
         for search in search_list:
-            bot.process_tweet_list(bot.filter_tweet_list(bot.get_from_search(search), filter))
+            bot.process_tweet_list(bot.filter_tweet_list(bot.search_tweets(search), filter))
         bot.save_dictionary_to_file(state_file)
 
-        print(f"\nSleeping for {delay_secs}s.  ZZZ zzz ...")
+        print(f"Sleeping for {delay_secs}s.  ZZZ zzz ...\n")
         time.sleep(delay_secs)
 
 if __name__ == "__main__":
