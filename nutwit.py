@@ -2,6 +2,7 @@
 
 import json
 import pickle
+import sys
 import time
 import tweepy
 
@@ -23,35 +24,34 @@ class Tweeter:
         api = tweepy.API(auth, wait_on_rate_limit=True)
         self.api = api
 
+    def __handle_new_tweets(self, search, raw_tweets):
+        """The common code to process the tweet list and update the latest tweet id for the search"""
+        tweets = []
+        if not search in self.dict:
+            self.dict[search] = 0
+
+        print(f"Handling '{search}', got {len(raw_tweets)} tweets since {self.dict[search]}")
+        for tweet in reversed(raw_tweets):
+            if tweet.id > self.dict[search]:
+                tweets.append(tweet)
+                self.dict[search] = tweet.id
+        return tweets
+        
+        
     def get_timeline(self):
         """Gets 200 tweets from account timeline, saves most recent to dict, returns list of unseen tweets
         tweet ids are time ordered, uses this to see if tweet was in previous batch"""
         #Interacts w/ API, not testing using module
-        timeline_tweets = tweepy.Cursor(self.api.home_timeline, count=10).items(100) #gets as many tweets from timeline as possible (100)
-        unseen = []
-        if not "timeline" in self.dict:
-            self.dict["timeline"] = 0
-        max = self.dict["timeline"]
-        for tweet in timeline_tweets:
-            if tweet.id > self.dict["timeline"]:
-                unseen.append(tweet)
-                if tweet.id > max:
-                    max = tweet.id
-        self.dict["timeline"] = max
-        return unseen
+        
+        tweets = self.api.home_timeline(count=10, since_id=self.dict.get("timeline"))
+        return self.__handle_new_tweets("timeline", tweets)
 
     def get_from_search(self, search):
         """Generalized version of below searches. Takes a phrase to search, and pulls tweet from that search
         that have been tweeted since the last search. Saves most recently processed tweet to dictionary"""
         #Interacts w/ API, not testing using module
-        list_search = []
-        if not search in self.dict:
-            self.dict[search] = 0
-        for tweet in self.api.search_tweets(q=search, lang="en", count=10, since_id=self.dict[search]):
-            list_search.append(tweet)
-            if self.dict[search] < tweet.id: #may not work? depends if search only pulls once
-                self.dict[search] = tweet.id
-        return list_search
+        tweets = self.api.search_tweets(q=search, lang="en", count=10, since_id=self.dict.get(search))
+        return self.__handle_new_tweets(search, tweets)
     
     def process_tweet_list(self, tweet_list):
         """Retweets all un-retweeted tweets from given list. Designed to process results from get_timeline
@@ -59,11 +59,11 @@ class Tweeter:
         #Interacts w/ API, not testing using module
         for tweet in tweet_list:
             if ((tweet.in_reply_to_status_id is None) and not (tweet.user.id == "fan_neu") and not tweet.retweeted):
-                print("retweeting")
+                print(f"  Retweeting {tweet.id}: {tweet.text[0:50]}...")
                 try:
                     tweet.retweet()
                 except tweepy.errors.Forbidden:
-                    print("Already Retweeted!")
+                    print("    Already Retweeted!")
                 #self.api.retweet(tweet.id)
 
     def filter_tweet_list(self, tweet_list, filter):
@@ -85,6 +85,7 @@ class Tweeter:
            since it will be running on a server and methods depend on most recent tweets processed. Only doing dictionary so
            that the dictionary can be directly imported from a file to an existing object, since only the dictionary will
            change with each run."""
+        # You can read the file for testing with: python -m pickle bot_state.pkl
         with open(filename, 'wb') as f:
             pickle.dump(self.dict, f)
 
