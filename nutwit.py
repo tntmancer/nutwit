@@ -35,6 +35,8 @@ class Tweeter:
             if tweet.id > self.dict[search]:
                 tweets.append(tweet)
                 self.dict[search] = tweet.id
+            else:
+                print(f" - Skipped {tweet.id}: {tweet.text[0:50]}...")
         return tweets
         
         
@@ -67,7 +69,7 @@ class Tweeter:
         #Interacts w/ API, not testing using module
         for tweet in tweet_list:
             if ((tweet.in_reply_to_status_id is None) and not (tweet.user.id == "fan_neu") and not tweet.retweeted):
-                print(f" - Retweeting {tweet.id}: {tweet.text[0:50]}...")
+                print(f" + Retweeting {tweet.id}: {tweet.text[0:50]}...")
                 try:
                     tweet.retweet()
                 except tweepy.errors.Forbidden:
