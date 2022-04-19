@@ -30,7 +30,7 @@ class Tweeter:
         if not search in self.dict:
             self.dict[search] = 0
 
-        print(f"Handling '{search}', got {len(raw_tweets)} tweets since {self.dict[search]}")
+        print(f"+ Handling '{search}', got {len(raw_tweets)} tweets since {self.dict[search]}")
         for tweet in reversed(raw_tweets):
             if tweet.id > self.dict[search]:
                 tweets.append(tweet)
@@ -59,7 +59,7 @@ class Tweeter:
         #Interacts w/ API, not testing using module
         for tweet in tweet_list:
             if ((tweet.in_reply_to_status_id is None) and not (tweet.user.id == "fan_neu") and not tweet.retweeted):
-                print(f"  Retweeting {tweet.id}: {tweet.text[0:50]}...")
+                print(f" - Retweeting {tweet.id}: {tweet.text[0:50]}...")
                 try:
                     tweet.retweet()
                 except tweepy.errors.Forbidden:
@@ -114,7 +114,7 @@ def main():
     state_file = "bot_state.pkl"
     search_list = ["#Northeastern", "HowlinHuskies", "LikeAHusky"]
     filter = ["Giving Day", "$", "Admissions", "Illinois"]
-    delay_secs = 10 * 60    # 10 minutes
+    delay_secs = 1 * 60    # 1 minute
 
     secrets = load_secrets(secrets_file)
 
@@ -128,7 +128,7 @@ def main():
             bot.process_tweet_list(bot.filter_tweet_list(bot.get_from_search(search), filter))
         bot.save_dictionary_to_file(state_file)
 
-        print(f"Sleeping for {delay_secs}.  ZZZ zzz ...")
+        print(f"\nSleeping for {delay_secs}s.  ZZZ zzz ...")
         time.sleep(delay_secs)
 
 if __name__ == "__main__":
