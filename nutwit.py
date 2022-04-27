@@ -2,7 +2,7 @@
 
 import json
 import pickle
-import sys
+#import sys
 import time
 import tweepy
 
@@ -12,6 +12,7 @@ class Tweeter:
        Twitter using the tweepy library. Methods included for saving object via 
        pickle, pulling tweets from timeline, and searching."""
     def __init__(self, api_key, api_key_secret, bearer_token, token, token_secret, last_seen_dict = None):
+        """Initializes instance of tweeter class and connects to API. Saves most recent tweets to dictionary."""
         if last_seen_dict == None:
             self.dict = {}
             
@@ -25,7 +26,7 @@ class Tweeter:
         self.api = api
 
     def __handle_new_tweets(self, search, raw_tweets):
-        """The common code to process the tweet list and update the latest tweet id for the search"""
+        """The common code to process the tweet list and update the latest tweet id for the search."""
         tweets = []
         if not search in self.dict:
             self.dict[search] = 0
@@ -38,14 +39,6 @@ class Tweeter:
             else:
                 print(f" - Skipped {tweet.id}: {tweet.text[0:50]}...")
         return tweets
-        
-        
-    def get_timeline(self):
-        """Gets 200 tweets from account timeline, saves most recent to dict, returns list of unseen tweets
-        tweet ids are time ordered, uses this to see if tweet was in previous batch"""
-        #Interacts w/ API, not testing using module
-        
-        return self.__handle_new_tweets("timeline", tweets)
 
     def search_tweets(self, search):
         """Generalized version of below searches. Takes a phrase to search, and pulls tweet from that search
@@ -53,7 +46,7 @@ class Tweeter:
 
         If the search phrase is 'timeline' it instead searches the user's timeline."""
         #Interacts w/ API, not testing using module
-        since = self.dict.get("timeline")
+        since = self.dict.get(search) #[key] fails if key is non-existent, get() returns None
         count = 10
 
         if search == "timeline":
@@ -109,7 +102,23 @@ class Tweeter:
                 self.dict = pickle.load(f)
         except:
             self.dict = {}
+    def main(self,
+            state_file = "bot_state.pkl", 
+            search_list = ["timeline", "#Northeastern", "HowlinHuskies", "LikeAHusky"], 
+            filter = ["Giving Day", "$", "Admissions", "Illinois"], 
+            delay_secs = 1 * 60):
+        """Runs loop on given search terms, retweeting unseen tweets since past loop
+        and filtering those including terms from the given list of filters. 
+        Delays one minute between passes."""
+        while True:
+            print("Running searches:")
+            self.load_dictionary_from_file(state_file)
+            for search in search_list:
+                self.process_tweet_list(self.filter_tweet_list(self.search_tweets(search), filter))
+            self.save_dictionary_to_file(state_file)
 
+            print(f"Sleeping for {delay_secs}s.  ZZZ zzz ...\n")
+            time.sleep(delay_secs)
 
 def load_secrets(filename):
     """Loads secrets from the given file (in json format so we can edit them).
@@ -119,27 +128,34 @@ def load_secrets(filename):
     f.close()
     return secrets
 
-def main():
-    secrets_file = "secrets.json"
-    state_file = "bot_state.pkl"
-    search_list = ["timeline", "#Northeastern", "HowlinHuskies", "LikeAHusky"]
-    filter = ["Giving Day", "$", "Admissions", "Illinois"]
-    delay_secs = 1 * 60    # 1 minute
+secrets_file = "secrets.json"
+secrets = load_secrets(secrets_file)
+bot = Tweeter(*secrets)
+bot.main()
 
-    secrets = load_secrets(secrets_file)
+#def main():
+#    """Encapsulated in function so that file can be imported into testing 
+#       file and the program body won't run."""
+#    secrets_file = "secrets.json"
+#    state_file = "bot_state.pkl"
+#    search_list = ["timeline", "#Northeastern", "HowlinHuskies", "LikeAHusky"]
+#    filter = ["Giving Day", "$", "Admissions", "Illinois"]
+#    delay_secs = 1 * 60    # 1 minute
+#
+#    secrets = load_secrets(secrets_file)
+#
+#    bot = Tweeter(*secrets)
+#
+#
+#    while True:
+#        print("Running searches:")
+#        bot.load_dictionary_from_file(state_file)
+#        for search in search_list:
+#            bot.process_tweet_list(bot.filter_tweet_list(bot.search_tweets(search), filter))
+#        bot.save_dictionary_to_file(state_file)
+#
+#        print(f"Sleeping for {delay_secs}s.  ZZZ zzz ...\n")
+#        time.sleep(delay_secs)
 
-    bot = Tweeter(*secrets)
-
-
-    while True:
-        print("Running searches:")
-        bot.load_dictionary_from_file(state_file)
-        for search in search_list:
-            bot.process_tweet_list(bot.filter_tweet_list(bot.search_tweets(search), filter))
-        bot.save_dictionary_to_file(state_file)
-
-        print(f"Sleeping for {delay_secs}s.  ZZZ zzz ...\n")
-        time.sleep(delay_secs)
-
-if __name__ == "__main__":
-    main()
+#if __name__ == "__main__":
+#    main()
