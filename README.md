@@ -8,7 +8,7 @@ pull from a timeline, and retweet a list of tweets.
 
 Recently seen tweets are stored in a pickle, while the API tokens and keys are hidden from being leaked in a json file.
 
-It also includes a function to run and constantly pull and process tweets, waiting after each run. It saves and loads
+It also includes a method to run and constantly pull and process tweets, waiting after each run. It saves and loads
 the most recently seen tweets to a pickle after each run.
 
 The testing file includes tests with mock classes to make sure that the main methods of the Tweeter class function
