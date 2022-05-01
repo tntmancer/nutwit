@@ -132,30 +132,3 @@ secrets_file = "secrets.json"
 secrets = load_secrets(secrets_file)
 bot = Tweeter(*secrets)
 bot.main()
-
-#def main():
-#    """Encapsulated in function so that file can be imported into testing 
-#       file and the program body won't run."""
-#    secrets_file = "secrets.json"
-#    state_file = "bot_state.pkl"
-#    search_list = ["timeline", "#Northeastern", "HowlinHuskies", "LikeAHusky"]
-#    filter = ["Giving Day", "$", "Admissions", "Illinois"]
-#    delay_secs = 1 * 60    # 1 minute
-#
-#    secrets = load_secrets(secrets_file)
-#
-#    bot = Tweeter(*secrets)
-#
-#
-#    while True:
-#        print("Running searches:")
-#        bot.load_dictionary_from_file(state_file)
-#        for search in search_list:
-#            bot.process_tweet_list(bot.filter_tweet_list(bot.search_tweets(search), filter))
-#        bot.save_dictionary_to_file(state_file)
-#
-#        print(f"Sleeping for {delay_secs}s.  ZZZ zzz ...\n")
-#        time.sleep(delay_secs)
-
-#if __name__ == "__main__":
-#    main()
