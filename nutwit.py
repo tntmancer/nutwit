@@ -128,9 +128,8 @@ def load_secrets(filename):
     f.close()
     return secrets
 
-secrets_file = "secrets.json"
-secrets = load_secrets(secrets_file)
-bot = Tweeter(*secrets)
-#bot.main()
 if __name__ == "__main__":
+    secrets_file = "secrets.json"
+    secrets = load_secrets(secrets_file)
+    bot = Tweeter(*secrets)
     bot.main()
