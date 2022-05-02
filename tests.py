@@ -1,9 +1,13 @@
+
 from os import unlink
 import unittest
 from nutwit import Tweeter, load_secrets
 import pickle
+import json
 
-# To run tests from the command line: python -m unittest tests.py
+# To run tests from the command line: 
+# Enter anything other than 'run when prompted,
+# then input  python -m unittest tests.py
 
 class TweetMock:
     def __init__(self, text):
@@ -14,7 +18,7 @@ class Test_Tweeter(unittest.TestCase):
     def setUp(self):
         secrets_file = "secrets.json"
         secrets = load_secrets(secrets_file)
-
+        self.secrets = secrets
         self.tweeter = Tweeter(*secrets)
 
     def test_filter_empty(self):
@@ -61,6 +65,16 @@ class Test_Tweeter(unittest.TestCase):
         self.tweeter.load_dictionary_from_file(pickle_file)
         unlink(pickle_file)
         self.assertEqual(dict, self.tweeter.dict)
+
+    def test_save_dict(self):
+        """file does exist"""
+        self.tweeter.dict = {"Is This It": "Someday"}
+        pickle_file = "saved.pkl"
+        self.tweeter.save_dictionary_to_file(pickle_file)
+        with open(pickle_file, 'rb') as f:
+            dict = pickle.load(f)
+        unlink(pickle_file)
+        self.assertEqual(dict, self.tweeter.dict)
         
     def test_load_secrets_dne(self):
         """file does not exist"""
@@ -68,14 +82,13 @@ class Test_Tweeter(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             secrets = load_secrets("dne.py")
 
-    def test_load_secrets_incomplete(self):
-        """file missing fields"""
-
     def test_load_secrets_complete(self):
         """File has required fields"""
-
-    def test_save_dne(self):
-        """file does not exist"""
-
-    def test_save_exists(self):
-        """file does exist"""
+        data = ["a", "b", "c", "d", "e"]
+        secret_file = "complete.json"
+        with open(secret_file, 'w') as f:
+            json.dump(data, f)
+        data_from_file = load_secrets(secret_file)
+        unlink(secret_file)
+        self.assertEqual(data, data_from_file)
+    

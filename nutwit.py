@@ -131,4 +131,6 @@ def load_secrets(filename):
 secrets_file = "secrets.json"
 secrets = load_secrets(secrets_file)
 bot = Tweeter(*secrets)
-bot.main()
+#bot.main()
+if input("Enter 'run' to Start bot: ") == 'run':
+    bot.main()
