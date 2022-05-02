@@ -1,4 +1,3 @@
-from cgitb import text
 from os import unlink
 import unittest
 from nutwit import Tweeter, load_secrets
